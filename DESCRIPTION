@@ -16,3 +16,6 @@ Imports:
     stringr
 URL: https://github.com/cbusath/ptihelpers
 BugReports: https://github.com/cbusath/ptihelpers/issues
+Depends: 
+    R (>= 2.10)
+LazyData: true
