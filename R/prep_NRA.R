@@ -1,67 +1,69 @@
 #' Combines files from datraw folder into Rds file.
+#' @importFrom magrittr %>%
 #'
 #' @param string Alternate path to the appropriate data folder.
 #' @param string Alternative name than the one the function creates.
 #'
 #'
-#' @return A character vector.
+#' @return A tibble of all csvs in folder, saved as an Rds file.
 #' @export
 #'
 #' @examples
-#' prep_NRA() #Looks in the datraw folder, and compiles all files into one Rds file.
+#' x <- "my_csv_path"
+#' get_csv_paths(x) %>% get_data()
 #'
 
+#' @export
+get_csv_paths <- function(path){
 
 
-prep_NRA <- function(diff_path = NULL, diff_name = NULL){
+  path_is_dir <- utils::file_test("-d", path)
 
+  if(path_is_dir){
+    csv_names <- list.files(path, pattern="*.csv$")
+    csv_files_paths <- paste0(path, "/", csv_names)
+    names(csv_files_paths) <- c(csv_names)
 
+    return(csv_files_paths)
 
-  data_dir_path <- here::here("Data", "2022")
-  data_files <- list.files(data_dir_path)
-  data_files_paths <- paste0(data_dir_path, "/", data_files)
-  names(data_files_paths) <- c("02.22", "03.22") #Generalize this!
+  }else {
 
+    #Chop off file name from file path.
+    csv_name <- stringr::str_extract(path, pattern = '[^/]*.csv$')
+    names(path) <- csv_name
+    return(path)
+  }
 
 }
 
 
+read_NRFSP_csv <- function(path){
+  readr::read_csv(path, col_types = list(Candidate_ID = readr::col_double(),
+                                         Form_ID = readr::col_factor(),
+                                         Version_ID = readr::col_double(),
+                                         Raw_Score = readr::col_double(),
+                                         Pass_Fail = readr::col_factor(),
+                                         Responses = readr::col_character()),
+                  col_select = c(Candidate_ID,
+                                 Form_ID,
+                                 Version_ID,
+                                 Raw_Score,
+                                 Pass_Fail,
+                                 Responses))
+}
 
-dat <-
-  map_dfr(.x = data_files_paths,
-          .f = read_csv,
-          .id = "Month") %>%
-  select(Month, Candidate_ID,
-         Form_ID, Version_ID, Raw_Score,
-         Pass_Fail, Responses
-  ) %>%
-  mutate(Responses = strsplit(Responses, split = ""),
-         KeyID = paste0(Form_ID, Version_ID, "_keys.csv"),
-         across(c(Month, Candidate_ID, Form_ID, Version_ID, Pass_Fail),
-                factor))
+#' @export
+get_dat <- function(csv_paths){
 
-keys_needed <-
-  dat %>% pull(KeyID) %>% unique()
+  names_files <- names(csv_paths)
 
+  dat <-
+    purrr::map_dfr(.x = csv_paths,
+                   .f = read_NRFSP_csv,
+                   .id = "File")
 
-keys_available <-
-  list.files(here("Keys"))
-
-## TODO: Log some sort of warning if not all keys are available.
-#Filter out forms that don't have associated keys
-dat <-
-  dat %>% filter(KeyID %in% keys_available)
-
-keys_to_pull <-
-  dat %>%
-  pull(KeyID) %>% unique()
-
-path_to_keys <- paste0(here("Keys"), "/", keys_to_pull)
+  print(base::paste0("Found and compiled ", base::paste(names_files, collapse = ", ")))
+  return(dat)
 
 
-##Name the keys and combine them into one table.
-names(path_to_keys) <- keys_to_pull
-key_table =
-  map_dfr(.x = path_to_keys,
-          .f = ~read_csv(.x, col_types = list(itemID = col_factor())),
-          .id = "KeyID")
+}
