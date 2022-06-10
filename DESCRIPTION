@@ -16,7 +16,9 @@ Imports:
     base,
     dplyr,
     magrittr,
-    stringr
+    stringr,
+    tibble,
+    tidyr
 URL: https://github.com/cbusath/ptihelpers
 BugReports: https://github.com/cbusath/ptihelpers/issues
 Depends: 

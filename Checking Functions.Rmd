@@ -1,0 +1,25 @@
+---
+title: "Checking Functions"
+output: html_document
+date: '2022-06-09'
+---
+
+
+```{r}
+a <- "C:/Users/cbusath/OneDrive - Professional Testing Inc/Documents/RStudio Work/NRFSP/FSMCE/Data/2022"
+
+b <- "C:/Users/cbusath/OneDrive - Professional Testing Inc/Documents/RStudio Work/NRFSP/FSMCE/Keys"
+dat <- 
+prep_NRFSP(a, b)
+
+
+a <- prep_csv_paths(a)
+b <- prep_csv_paths(b)
+dat <- ptihelpers::get_NRFSP_dat(a)
+
+dat
+
+ptihelpers::join_keys_to_dat(dat, b)
+
+```
+
