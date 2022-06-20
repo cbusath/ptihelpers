@@ -7,20 +7,11 @@
 prep_NRFSP(path_dat, path_key)
 }
 \arguments{
-\item{string}{Path to folder containing csv files, or path to single csv file.}
+\item{string}{path_key Path to folder containing csv files, or path to single csv file.}
 }
 \value{
 A comprehensive tibble where every row is a candidate response, but which can be nested to conduct a variety of analysis.
 }
 \description{
 Combines NRFSP data files with
-}
-\examples{
-x <- "../some/path/data"
-y <- "../some/path/keys"
-dat <- prep_NRFSP(x, y)
-
-readr::write_rds("dat_Feb_March.rds")
-dat <- readr::read_rds("dat_Feb_March.rds")
-
 }

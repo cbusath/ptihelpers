@@ -1,20 +1,15 @@
 #' Combines NRFSP data files with
 #'
 #' @importFrom magrittr %>%
+#' @importFrom rlang .data
 #'
-#' @param string Path to folder containing csv files, or path to single csv file.
-#' @param string Path to folder containing csv files, or path to single csv file.
+#'
+#' @param string path_dat Path to folder containing csv files, or path to single csv file.
+#' @param string path_key Path to folder containing csv files, or path to single csv file.
 #'
 #' @return A comprehensive tibble where every row is a candidate response, but which can be nested to conduct a variety of analysis.
 #'
 #'
-#' @examples
-#' x <- "../some/path/data"
-#' y <- "../some/path/keys"
-#' dat <- prep_NRFSP(x, y)
-#'
-#' readr::write_rds("dat_Feb_March.rds")
-#' dat <- readr::read_rds("dat_Feb_March.rds")
 #'
 
 
@@ -24,8 +19,10 @@
 #' @export
 prep_NRFSP <- function(path_dat, path_key){
 
-  dat_paths <- prep_csv_paths(path_dat)
-  key_paths <- prep_csv_paths(path_key)
+  path_dat <- path_key <- NULL
+
+  dat_paths <- prep_paths(path_dat)
+  key_paths <- prep_paths(path_key)
 
 
   dat <-
@@ -47,7 +44,7 @@ prep_csv_paths <- function(path){
     #Get all .csv files from directory, and name using .
     csv_names <- base::list.files(path, pattern="*.csv$")
     csv_files_paths <- base::paste0(path, "/", csv_names)
-    names(csv_files_paths) <- c(csv_names)
+    base::names(csv_files_paths) <- c(csv_names)
 
     return(csv_files_paths)
 
@@ -55,7 +52,7 @@ prep_csv_paths <- function(path){
 
     #Chop off file name from file path to use as name for path.
     csv_name <- stringr::str_extract(path, pattern = '[^/]*.csv$')
-    names(path) <- csv_name
+    base::names(path) <- csv_name
     return(path)
   }
 
@@ -84,7 +81,7 @@ read_NRFSP_csv <- function(path){
 #' @export
 get_NRFSP_dat <- function(csv_paths){
 
-  names_files <- names(csv_paths)
+  names_files <- base::names(csv_paths)
 
   dat <-
     purrr::map_dfr(.x = csv_paths,
@@ -93,8 +90,8 @@ get_NRFSP_dat <- function(csv_paths){
     dplyr::mutate(Responses = strsplit(.data$Responses, split = ""),
            KeyID = paste0(.data$Form_ID, .data$Version_ID, "_keys.csv"))
 
-  base::cat(base::paste0("Found and compiled the following: \n",
-                   base::paste(names_files, collapse = "\n")))
+    base::cat(base::paste0("Found and compiled the following: \n",
+              base::paste(names_files, collapse = "\n")))
   return(dat)
 
 
@@ -111,7 +108,7 @@ join_keys_to_dat <- function(dat, keys_path){
   keys_available <-
     base::list.files(keys_path)
 
-  keys_index <- keys_needed %in% keys_available
+  keys_index <- keys_needed %in% keys_available #maybe this
 
   missing_keys <- keys_needed[keys_index == F]
   matching_keys <- keys_needed[keys_index == T]
@@ -124,9 +121,10 @@ join_keys_to_dat <- function(dat, keys_path){
 
   #Print results to console
   if(length(missing_keys) > 0){
-    warning(base::paste0("I could not find the following ", base::length(missing_keys), " keys: \n",
-                   base::paste(missing_keys, collapse = "\n"), "\n",
-                   "These forms have been dropped from the dataset."))
+    warning(base::paste0("I could not find the following ",
+            base::length(missing_keys), " keys: \n",
+            base::paste(missing_keys, collapse = "\n"), "\n",
+              "These forms have been dropped from the dataset."))
   } else {
     base::cat("All forms had matching keys.")
   }
@@ -134,7 +132,7 @@ join_keys_to_dat <- function(dat, keys_path){
 
   #Prep key_table
   path_to_keys <- base::paste0(keys_path, "/", matching_keys)
-  names(path_to_keys) <- matching_keys
+  base::names(path_to_keys) <- matching_keys
   key_table <-
     purrr::map_dfr(.x = path_to_keys,
             .f = ~readr::read_csv(.x, col_types = list(itemID = readr::col_factor())),

@@ -16,9 +16,14 @@ Imports:
     base,
     dplyr,
     magrittr,
+    purrr,
+    readr,
+    rlang,
     stringr,
     tibble,
-    tidyr
+    tidyr,
+    tidyselect,
+    utils
 URL: https://github.com/cbusath/ptihelpers
 BugReports: https://github.com/cbusath/ptihelpers/issues
 Depends: 
