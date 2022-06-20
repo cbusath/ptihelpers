@@ -1,8 +1,86 @@
 
-
+#' Combines FACE response files (sdf) with key (csv)
+#'
+#' @param string path_dat Path to folder containing csv files, or path to single csv file.
+#'
+#' @param string path_key Path to folder containing csv files, or path to single csv file.
+#' @param string list of the names of the forms (e.g., c("Form199", "Form199", "Form198")) that correspond to each file.
+#'
+#' @return A comprehensive tibble where every row is a candidate response, but which can be nested to conduct a variety of analysis.
+#'
 #' @importFrom magrittr %>%
 #' @importFrom rlang .data
+#'
 
+
+
+#Overall
+#' @export
+prep_FACE <- function(path_dat, path_key, list_form_id,
+                      possible_response_options = c("A", "B", "C", "D", "ABCD"),
+                      passing_score = 60){
+
+  #CANDIDATE DATA
+  dat <-
+    prep_FACE_dat(path_dat, list_form_id)
+
+  #CHECK KEYS
+  keys_list <- check_keys_available(dat, path_key)
+
+  if(base::length(keys_list$missing_keys) > 0){
+    warning(base::paste0("I could not find the following ",
+                         base::length(keys_list$missing_keys), " keys: \n",
+                         base::paste(keys_list$missing_keys, collapse = "\n"), "\n",
+                         "These forms have been dropped from the dataset."))
+
+    #Filter data to drop forms without keys
+    dat <-
+      dat %>% dplyr::filter(.data$key_id %in% keys_list$matching_keys)
+  } else {
+    base::cat("\n", "All forms had matching keys.")
+  }
+
+  #KEY TABLE
+  key_table <- prep_FACE_key_table(keys_list)
+
+
+  #JOIN and FACTORIZE
+  dat <-
+    dat %>%
+    tidyr::unnest(.data$responses) %>%
+    dplyr::left_join(key_table,
+                     by = c("key_id", "item_seq")) %>%
+    dplyr::mutate(dplyr::across(tidyselect::everything(), factor)) %>% #tidyselect
+    dplyr::ungroup()
+
+  #GET SCORE AND PASSING
+  dat <-
+    dat %>%
+    dplyr::mutate(dplyr::across(c(.data$responses,
+                                  .data$item_key),
+                                ~factor(.x, levels = possible_response_options)),
+                  correct = dplyr::case_when(.data$responses == .data$item_key ~ 1,
+                                             .data$item_key == "ABCD" ~ 1,
+                                             .data$responses != .data$item_key ~ 0
+                  )) %>%
+    tidyr::nest(item_dat = c(.data$item_seq,
+                             .data$item_id,
+                             .data$responses,
+                             .data$item_key,
+                             .data$correct)) %>%
+    dplyr::mutate(score = purrr::map_dbl(.data$item_dat,
+                                         function(df) base::sum(df$correct,
+                                                                na.rm = T)),
+                  pass = ifelse(.data$score >= passing_score, T, F)) %>%
+    tidyr::unnest(.data$item_dat) %>%
+
+    #CLEAN UP COLS
+    dplyr::select(.data$file, .data$form_id, .data$key_id,
+                  .data$cand_id, .data$pass, .data$score,
+                  .data$item_seq, .data$item_id, response = "responses", .data$item_key, .data$correct)
+
+  return(dat)
+}
 
 
 prep_FACE_dat <- function(sdf_paths, list_form_id){
@@ -82,70 +160,4 @@ prep_FACE_key_table <- function(keys_list){
 
 }
 
-#Overall
-#' @export
-prep_FACE <- function(path_dat, path_key, list_form_id,
-                      possible_response_options = c("A", "B", "C", "D", "ABCD"),
-                      passing_score = 60){
 
-  #CANDIDATE DATA
-  dat <-
-    prep_FACE_dat(path_dat, list_form_id)
-
-  #CHECK KEYS
-  keys_list <- check_keys_available(dat, path_key)
-
-  if(base::length(keys_list$missing_keys) > 0){
-    warning(base::paste0("I could not find the following ",
-                         base::length(keys_list$missing_keys), " keys: \n",
-                         base::paste(keys_list$missing_keys, collapse = "\n"), "\n",
-                         "These forms have been dropped from the dataset."))
-
-    #Filter data to drop forms without keys
-    dat <-
-      dat %>% dplyr::filter(.data$key_id %in% keys_list$matching_keys)
-  } else {
-    base::cat("\n", "All forms had matching keys.")
-  }
-
-  #KEY TABLE
-  key_table <- prep_FACE_key_table(keys_list)
-
-
-  #JOIN and FACTORIZE
-  dat <-
-    dat %>%
-    tidyr::unnest(.data$responses) %>%
-    dplyr::left_join(key_table,
-                     by = c("key_id", "item_seq")) %>%
-    dplyr::mutate(dplyr::across(tidyselect::everything(), factor)) %>% #tidyselect
-    dplyr::ungroup()
-
-  #GET SCORE AND PASSING
-  dat <-
-    dat %>%
-    dplyr::mutate(dplyr::across(c(.data$responses,
-                                       .data$item_key),
-                         ~factor(.x, levels = possible_response_options)),
-                  correct = dplyr::case_when(.data$responses == .data$item_key ~ 1,
-                                             .data$item_key == "ABCD" ~ 1,
-                                             .data$responses != .data$item_key ~ 0
-                  )) %>%
-    tidyr::nest(item_dat = c(.data$item_seq,
-                             .data$item_id,
-                             .data$responses,
-                             .data$item_key,
-                             .data$correct)) %>%
-    dplyr::mutate(score = purrr::map_dbl(.data$item_dat,
-                                         function(df) base::sum(df$correct,
-                                                                na.rm = T)),
-                  pass = ifelse(.data$score >= passing_score, T, F)) %>%
-    tidyr::unnest(.data$item_dat) %>%
-
-    #CLEAN UP COLS
-    dplyr::select(.data$file, .data$form_id, .data$key_id,
-                  .data$cand_id, .data$pass, .data$score,
-                  .data$item_seq, .data$item_id, response = "responses", .data$item_key, .data$correct)
-
-  return(dat)
-}

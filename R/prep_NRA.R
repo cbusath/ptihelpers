@@ -19,55 +19,57 @@
 #' @export
 prep_NRFSP <- function(path_dat, path_key){
 
-  path_dat <- path_key <- NULL
 
-  dat_paths <- prep_paths(path_dat)
-  key_paths <- prep_paths(path_key)
-
-
+  #CANDIDATE DATA
   dat <-
-  get_NRFSP_dat(dat_paths) %>%
-    join_keys_to_dat(key_paths)
+    prep_NRFSP_dat(path_dat)
+
+
+  #CHECK KEYS
+  keys_list <- check_keys_available(dat, path_key)
+
+  if(base::length(keys_list$missing_keys) > 0){
+    warning(base::paste0("I could not find the following ",
+                         base::length(keys_list$missing_keys), " keys: \n",
+                         base::paste(keys_list$missing_keys, collapse = "\n"), "\n",
+                         "These forms have been dropped from the dataset."))
+
+    #Filter data to drop forms without keys
+    dat <-
+      dat %>% dplyr::filter(.data$key_id %in% keys_list$matching_keys)
+  } else {
+    base::cat("\n", "All forms had matching keys.")
+  }
+
+  #KEY TABLE
+  key_table <- prep_NRFSP_key_table(keys_list)
+
+
+  #JOIN and FACTORIZE
+  dat <-
+    dat %>%
+    tidyr::unnest(.data$responses) %>%
+    dplyr::left_join(key_table,
+                     by = c("key_id", "item_seq")) %>%
+    dplyr::mutate(dplyr::across(tidyselect::everything(), factor)) %>% #Maybe not everything
+    dplyr::ungroup()
 
   return(dat)
 }
 
-#' @export
-prep_csv_paths <- function(path){
 
-  #Is the path to a directory?
-  path_is_dir <- utils::file_test("-d", path)
-
-  #Name paths by file name
-  if(path_is_dir){
-
-    #Get all .csv files from directory, and name using .
-    csv_names <- base::list.files(path, pattern="*.csv$")
-    csv_files_paths <- base::paste0(path, "/", csv_names)
-    base::names(csv_files_paths) <- c(csv_names)
-
-    return(csv_files_paths)
-
-  }else {
-
-    #Chop off file name from file path to use as name for path.
-    csv_name <- stringr::str_extract(path, pattern = '[^/]*.csv$')
-    base::names(path) <- csv_name
-    return(path)
-  }
-
-}
 
 
 #Helper function
 #' @export
 read_NRFSP_csv <- function(path){
-  readr::read_csv(path, col_types = list(Candidate_ID = readr::col_double(),
-                                         Form_ID = readr::col_factor(),
-                                         Version_ID = readr::col_factor(),
-                                         Raw_Score = readr::col_double(),
-                                         Pass_Fail = readr::col_factor(),
-                                         Responses = readr::col_character()),
+  readr::read_csv(path,
+                  col_types = list(Candidate_ID = readr::col_double(),
+                                   Form_ID = readr::col_factor(),
+                                   Version_ID = readr::col_factor(),
+                                   Raw_Score = readr::col_double(),
+                                   Pass_Fail = readr::col_factor(),
+                                   Responses = readr::col_character()),
                   col_select = c(Candidate_ID,
                                  Form_ID,
                                  Version_ID,
@@ -79,19 +81,49 @@ read_NRFSP_csv <- function(path){
 
 #Helper function
 #' @export
-get_NRFSP_dat <- function(csv_paths){
+prep_NRFSP_dat <- function(path_dat){
 
-  names_files <- base::names(csv_paths)
+  #HELPERS
+  read_NRFSP_csv <- function(csv_paths){
+    readr::read_csv(csv_paths,
+                    col_types = list(Candidate_ID = readr::col_double(),
+                                     Form_ID = readr::col_factor(),
+                                     Version_ID = readr::col_factor(),
+                                     Raw_Score = readr::col_double(),
+                                     Pass_Fail = readr::col_factor(),
+                                     Responses = readr::col_character()),
+                    col_select = c(Candidate_ID,
+                                   Form_ID,
+                                   Version_ID,
+                                   Raw_Score,
+                                   Pass_Fail,
+                                   Responses))
+  }
+
+  #Function to change response list to column for join (may become generalized)
+  resp_list_to_col <- function(.list){
+    return(
+      tibble::as_tibble_col(.list,
+                            column_name = "responses") %>%
+        dplyr::mutate(item_seq = 1:nrow(.))
+    )
+
+  }
+
+  #START
+  csv_paths <- prep_paths(path_dat, "csv")
 
   dat <-
     purrr::map_dfr(.x = csv_paths,
                    .f = read_NRFSP_csv,
-                   .id = "File") %>%
-    dplyr::mutate(Responses = strsplit(.data$Responses, split = ""),
-           KeyID = paste0(.data$Form_ID, .data$Version_ID, "_keys.csv"))
+                   .id = "file") %>%
+    dplyr::mutate(Responses = base::strsplit(.data$Responses, split = ""),
+                  Responses = purrr::map(.data$Responses, resp_list_to_col),
+                  form_id = paste0(.data$Form_ID, "_", .data$Version_ID),
+                  KeyID = paste0(.data$Form_ID, .data$Version_ID, "_keys.csv"))
 
-    base::cat(base::paste0("Found and compiled the following: \n",
-              base::paste(names_files, collapse = "\n")))
+  base::cat(base::paste0("Found and compiled the following: \n",
+                         base::paste(names(csv_paths), collapse = "\n")))
   return(dat)
 
 
