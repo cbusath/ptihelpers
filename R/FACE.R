@@ -24,25 +24,12 @@ prep_FACE <- function(path_dat, path_key, list_form_id,
   dat <-
     prep_FACE_dat(path_dat, list_form_id)
 
-  #CHECK KEYS
+  #MATCH KEYS
   keys_list <- check_keys_available(dat, path_key)
-
-  if(base::length(keys_list$missing_keys) > 0){
-    warning(base::paste0("I could not find the following ",
-                         base::length(keys_list$missing_keys), " keys: \n",
-                         base::paste(keys_list$missing_keys, collapse = "\n"), "\n",
-                         "These forms have been dropped from the dataset."))
-
-    #Filter data to drop forms without keys
-    dat <-
-      dat %>% dplyr::filter(.data$key_id %in% keys_list$matching_keys)
-  } else {
-    base::cat("\n", "All forms had matching keys.")
-  }
+  dat <- match_keys_available(dat, keys_list)
 
   #KEY TABLE
   key_table <- prep_FACE_key_table(keys_list)
-
 
   #JOIN and FACTORIZE
   dat <-

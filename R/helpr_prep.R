@@ -4,19 +4,15 @@
 
 check_keys_available <- function(dat, keys_path){
 
-
   keys_path_named <- prep_paths(keys_path)
+
   #Match between keys needed and keys available
   keys_needed <-
     dat %>% dplyr::pull(.data$key_id) %>% base::unique()
-
   keys_available <- base::names(keys_path_named)
-
   keys_index <- keys_needed %in% keys_available
-
   missing_keys <- keys_needed[keys_index == F]
   matching_keys <- keys_needed[keys_index == T]
-
   matching_keys_paths <- base::paste0(keys_path,
                                       "/",
                                       matching_keys)
@@ -29,11 +25,26 @@ check_keys_available <- function(dat, keys_path){
   names(keys_list) <- c("missing_keys",
                         "matching_keys",
                         "matching_keys_paths")
+
   return(keys_list)
 
-
 }
+match_keys_available <- function(dat, keys_list){
 
+  #REPORT
+  if(base::length(keys_list$missing_keys) > 0){
+    warning(base::paste0("I could not find the following ",
+                         base::length(keys_list$missing_keys), " keys: \n",
+                         base::paste(keys_list$missing_keys, collapse = "\n"), "\n",
+                         "These forms have been dropped from the dataset."))
+
+    #FILTER data to drop forms without keys
+    dat %>% dplyr::filter(.data$key_id %in% keys_list$matching_keys) %>% return()
+  } else {
+    base::cat("\n", "All forms had matching keys.")
+    return(dat)
+  }
+}
 prep_paths <- function(path, ending = "csv"){
 
   path <- stringr::str_replace_all(path, "[\\\\]", "/")
