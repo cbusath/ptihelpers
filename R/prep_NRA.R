@@ -44,8 +44,9 @@ prep_NRFSP <- function(path_dat, path_key){
                                   .data$response,
                                   .data$form_id,
                                   .data$key_id,
-    ), factor),
-    pass = ifelse(pass == "Pass", T, F)) %>%
+                                  ), factor),
+                  pass = ifelse(pass == "Pass", T, F),
+                  correct = ifelse(key_id == response, 1, 0)) %>%
     dplyr::select(
            .data$file,
            .data$form_id,
@@ -56,7 +57,12 @@ prep_NRFSP <- function(path_dat, path_key){
            .data$item_id,
            .data$item_domain,
            .data$response,
-           .data$item_key)
+           .data$item_key,
+           .data$correct)
+
+  #GET CORRECT
+  dat <-
+
 
   return(dat)
 }
