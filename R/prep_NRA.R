@@ -33,20 +33,28 @@ prep_NRFSP <- function(path_dat, path_key){
   key_table <- prep_NRFSP_key_table(keys_list)
 
 
-  #JOIN and FACTORIZE
+  #JOIN
   dat <-
     dat %>%
     tidyr::unnest(.data$response) %>%
     dplyr::left_join(key_table,
-                     by = c("key_id", "item_seq")) %>%
+                     by = c("key_id", "item_seq"))
+
+
+  #FACTORIZE, GET CORRECT
+  response_options <- dat$item_key %>% unique()
+  dat <-
+    dat %>%
     dplyr::mutate(dplyr::across(c(.data$file,
                                   .data$cand_id,
-                                  .data$response,
                                   .data$form_id,
                                   .data$key_id,
                                   ), factor),
+                  dplyr::across(c(.data$response,
+                                  .data$item_key),
+                                ~factor(.x, levels = response_options)),
                   pass = ifelse(pass == "Pass", T, F),
-                  correct = ifelse(key_id == response, 1, 0)) %>%
+                  correct = ifelse(item_key == response, 1, 0)) %>%
     dplyr::select(
            .data$file,
            .data$form_id,
@@ -59,9 +67,6 @@ prep_NRFSP <- function(path_dat, path_key){
            .data$response,
            .data$item_key,
            .data$correct)
-
-  #GET CORRECT
-  dat <-
 
 
   return(dat)
