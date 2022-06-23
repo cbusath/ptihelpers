@@ -8,12 +8,20 @@ prep_FACE(
   path_dat,
   path_key,
   list_form_id,
-  possible_response_options = c("A", "B", "C", "D", "ABCD"),
-  passing_score = 60
+  passing_score = 60,
+  item_pilot = c(95, 96, 97, 98, 99, 100)
 )
 }
 \arguments{
-\item{string}{list of the names of the forms (e.g., c("Form199", "Form199", "Form198")) that correspond to each file.}
+\item{path_dat}{Path to folder containing csv files, or path to single csv file.}
+
+\item{path_key}{Path to folder containing csv files, or path to single csv file.}
+
+\item{list_form_id}{List of the names of the forms (e.g., c("Form199", "Form199", "Form198")) that correspond to each file.}
+
+\item{passing_score}{Number. Pass if candidate total score is >= passing_score.}
+
+\item{item_pilot}{List of numbers that correspond pilot item sequence (e.g., 70, 71, 72, 73, 74, 75).}
 }
 \value{
 A comprehensive tibble where every row is a candidate response, but which can be nested to conduct a variety of analysis.

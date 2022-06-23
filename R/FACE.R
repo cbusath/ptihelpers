@@ -1,11 +1,12 @@
 
 #' Combines FACE response files (sdf) with key (csv)
 #'
-#' @param string path_dat Path to folder containing csv files, or path to single csv file.
+#' @param path_dat Path to folder containing csv files, or path to single csv file.
 #'
-#' @param string path_key Path to folder containing csv files, or path to single csv file.
-#' @param string list of the names of the forms (e.g., c("Form199", "Form199", "Form198")) that correspond to each file.
-#'
+#' @param path_key Path to folder containing csv files, or path to single csv file.
+#' @param list_form_id List of the names of the forms (e.g., c("Form199", "Form199", "Form198")) that correspond to each file.
+#' @param passing_score Number. Pass if candidate total score is >= passing_score.
+#' @param item_pilot List of numbers that correspond pilot item sequence (e.g., 70, 71, 72, 73, 74, 75).
 #' @return A comprehensive tibble where every row is a candidate response, but which can be nested to conduct a variety of analysis.
 #'
 #' @importFrom magrittr %>%
@@ -17,8 +18,8 @@
 #Overall
 #' @export
 prep_FACE <- function(path_dat, path_key, list_form_id,
-                      possible_response_options = c("A", "B", "C", "D", "ABCD"),
-                      passing_score = 60){
+                      passing_score = 60,
+                      item_pilot = c(95, 96, 97, 98, 99, 100)){
 
   #CANDIDATE DATA
   dat <-
@@ -41,6 +42,9 @@ prep_FACE <- function(path_dat, path_key, list_form_id,
     dplyr::ungroup()
 
   #GET SCORE AND PASSING
+
+  possible_response_options <- dat$item_key %>% unique()
+
   dat <-
     dat %>%
     dplyr::mutate(dplyr::across(c(.data$responses,
@@ -49,22 +53,27 @@ prep_FACE <- function(path_dat, path_key, list_form_id,
                   correct = dplyr::case_when(.data$responses == .data$item_key ~ 1,
                                              .data$item_key == "ABCD" ~ 1,
                                              .data$responses != .data$item_key ~ 0
-                  )) %>%
+                  ),
+                  item_pilot = ifelse(as.numeric(.data$item_seq) %in% item_pilot,
+                                      T, F)) %>%
     tidyr::nest(item_dat = c(.data$item_seq,
                              .data$item_id,
+                             .data$item_pilot,
                              .data$responses,
                              .data$item_key,
                              .data$correct)) %>%
     dplyr::mutate(score = purrr::map_dbl(.data$item_dat,
                                          function(df) base::sum(df$correct,
                                                                 na.rm = T)),
-                  pass = ifelse(.data$score >= passing_score, T, F)) %>%
+                  pass = ifelse(.data$score >= passing_score, T, F)
+                  ) %>%
     tidyr::unnest(.data$item_dat) %>%
 
     #CLEAN UP COLS
     dplyr::select(.data$file, .data$form_id, .data$key_id,
                   .data$cand_id, .data$pass, .data$score,
-                  .data$item_seq, .data$item_id, response = "responses", .data$item_key, .data$correct)
+                  .data$item_seq, .data$item_pilot, .data$item_id,
+                  response = "responses", .data$item_key, .data$correct)
 
   return(dat)
 }
@@ -90,6 +99,7 @@ prep_FACE_dat <- function(sdf_paths, list_form_id){
 
   #Function to change response list to column for join (may become generalized)
   resp_list_to_col <- function(.list){
+    utils::globalVariables(".") #Silence 'no visible binding' warning
     return(
       tibble::as_tibble_col(.list,
                             column_name = "responses") %>%

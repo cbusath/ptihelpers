@@ -1,12 +1,12 @@
-#' Combines NRFSP data files with
+#' Combines NRFSP data files with key files.
 #'
 #' @importFrom magrittr %>%
 #' @importFrom rlang .data
 #'
 #'
-#' @param string path_dat Path to folder containing csv files, or path to single csv file.
-#' @param string path_key Path to folder containing csv files, or path to single csv file.
-#'
+#' @param path_dat String pointing to folder containing csv files, or path to single csv file.
+#' @param path_key String pointing to folder containing csv files, or path to single csv file.
+#' @param item_pilot List of numbers that correspond pilot item sequence (e.g., 70, 71, 72, 73, 74, 75).
 #' @return A comprehensive tibble where every row is a candidate response, but which can be nested to conduct a variety of analysis.
 #'
 #'
@@ -17,7 +17,7 @@
 # Main function
 
 #' @export
-prep_NRFSP <- function(path_dat, path_key){
+prep_NRFSP <- function(path_dat, path_key, item_pilot = c(80, 81, 82, 83, 84, 85)){
 
 
   #CANDIDATE DATA
@@ -53,8 +53,10 @@ prep_NRFSP <- function(path_dat, path_key){
                   dplyr::across(c(.data$response,
                                   .data$item_key),
                                 ~factor(.x, levels = response_options)),
-                  pass = ifelse(pass == "Pass", T, F),
-                  correct = ifelse(item_key == response, 1, 0)) %>%
+                  pass = ifelse(.data$pass == "Pass", T, F),
+                  correct = ifelse(.data$item_key == .data$response, 1, 0),
+                  item_pilot = ifelse(as.numeric(.data$item_seq) %in% item_pilot,
+                                      T, F)) %>%
     dplyr::select(
            .data$file,
            .data$form_id,
@@ -62,6 +64,8 @@ prep_NRFSP <- function(path_dat, path_key){
            .data$cand_id,
            .data$pass,
            .data$score,
+           .data$item_seq,
+           .data$item_pilot,
            .data$item_id,
            .data$item_domain,
            .data$response,
@@ -73,26 +77,23 @@ prep_NRFSP <- function(path_dat, path_key){
 }
 
 
-
-
-#Helper function
-#' @export
-read_NRFSP_csv <- function(path){
-  readr::read_csv(path,
+read_NRFSP_csv <- function(csv_paths){
+  readr::read_csv(csv_paths,
                   col_types = list(Candidate_ID = readr::col_double(),
                                    Form_ID = readr::col_factor(),
                                    Version_ID = readr::col_factor(),
                                    Raw_Score = readr::col_double(),
                                    Pass_Fail = readr::col_factor(),
                                    Responses = readr::col_character()),
-                  col_select = c(Candidate_ID,
-                                 Form_ID,
-                                 Version_ID,
-                                 Raw_Score,
-                                 Pass_Fail,
-                                 Responses))
+                  col_select = c(cand_id = .data$Candidate_ID,
+                                 .data$Form_ID,
+                                 .data$Version_ID,
+                                 score = .data$Raw_Score,
+                                 pass = .data$Pass_Fail,
+                                 response = .data$Responses))
 }
-#' @export
+
+
 prep_NRFSP_dat <- function(path_dat){
 
   #HELPERS
@@ -104,16 +105,17 @@ prep_NRFSP_dat <- function(path_dat){
                                      Raw_Score = readr::col_double(),
                                      Pass_Fail = readr::col_factor(),
                                      Responses = readr::col_character()),
-                    col_select = c(cand_id = Candidate_ID,
-                                   Form_ID,
-                                   Version_ID,
-                                   score = Raw_Score,
-                                   pass = Pass_Fail,
-                                   response = Responses))
+                    col_select = c(cand_id = .data$Candidate_ID,
+                                   .data$Form_ID,
+                                   .data$Version_ID,
+                                   score = .data$Raw_Score,
+                                   pass = .data$Pass_Fail,
+                                   response = .data$Responses))
   }
 
   #Function to change response list to column for join (may become generalized)
   resp_list_to_col <- function(.list){
+    utils::globalVariables(".") #Silence 'no visible binding' warning
     return(
       tibble::as_tibble_col(.list,
                             column_name = "response") %>%
@@ -143,7 +145,8 @@ prep_NRFSP_dat <- function(path_dat){
 
 
 }
-#' @export
+
+
 prep_NRFSP_key_table <- function(keys_list){
 
   key_table <-
