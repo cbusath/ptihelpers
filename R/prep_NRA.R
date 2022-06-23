@@ -12,7 +12,7 @@
 #'
 #'
 
-
+utils::globalVariables(".") #Silence 'no visible binding' warning
 
 # Main function
 
@@ -115,7 +115,6 @@ prep_NRFSP_dat <- function(path_dat){
 
   #Function to change response list to column for join (may become generalized)
   resp_list_to_col <- function(.list){
-    utils::globalVariables(".") #Silence 'no visible binding' warning
     return(
       tibble::as_tibble_col(.list,
                             column_name = "response") %>%

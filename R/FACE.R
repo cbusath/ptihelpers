@@ -15,6 +15,8 @@
 
 
 
+utils::globalVariables(".") #Silence 'no visible binding' warning
+
 #Overall
 #' @export
 prep_FACE <- function(path_dat, path_key, list_form_id,
@@ -99,7 +101,7 @@ prep_FACE_dat <- function(sdf_paths, list_form_id){
 
   #Function to change response list to column for join (may become generalized)
   resp_list_to_col <- function(.list){
-    utils::globalVariables(".") #Silence 'no visible binding' warning
+
     return(
       tibble::as_tibble_col(.list,
                             column_name = "responses") %>%
