@@ -80,8 +80,8 @@ prep_NRFSP <- function(path_dat, path_key, item_pilot = c(80, 81, 82, 83, 84, 85
 read_NRFSP_csv <- function(csv_paths){
   readr::read_csv(csv_paths,
                   col_types = list(Candidate_ID = readr::col_double(),
-                                   Form_ID = readr::col_factor(),
-                                   Version_ID = readr::col_factor(),
+                                   Form_ID = readr::col_character(),
+                                   Version_ID = readr::col_character(),
                                    Raw_Score = readr::col_double(),
                                    Pass_Fail = readr::col_factor(),
                                    Responses = readr::col_character()),
@@ -95,23 +95,6 @@ read_NRFSP_csv <- function(csv_paths){
 
 #' @export
 prep_NRFSP_dat <- function(path_dat){
-
-  #HELPERS
-  read_NRFSP_csv <- function(csv_paths){
-    readr::read_csv(csv_paths,
-                    col_types = list(Candidate_ID = readr::col_double(),
-                                     Form_ID = readr::col_character(),  #This has to be character to properly combine into form_id and key_id
-                                     Version_ID = readr::col_character(), #Same
-                                     Raw_Score = readr::col_double(),
-                                     Pass_Fail = readr::col_factor(),
-                                     Responses = readr::col_character()),
-                    col_select = c(cand_id = .data$Candidate_ID,
-                                   .data$Form_ID,
-                                   .data$Version_ID,
-                                   score = .data$Raw_Score,
-                                   pass = .data$Pass_Fail,
-                                   response = .data$Responses))
-  }
 
   #Function to change response list to column for join (may become generalized)
   resp_list_to_col <- function(.list){
