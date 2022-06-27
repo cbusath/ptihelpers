@@ -100,8 +100,8 @@ prep_NRFSP_dat <- function(path_dat){
   read_NRFSP_csv <- function(csv_paths){
     readr::read_csv(csv_paths,
                     col_types = list(Candidate_ID = readr::col_double(),
-                                     Form_ID = readr::col_factor(),
-                                     Version_ID = readr::col_factor(),
+                                     Form_ID = readr::col_character(),  #This has to be character to properly combine into form_id and key_id
+                                     Version_ID = readr::col_character(), #Same
                                      Raw_Score = readr::col_double(),
                                      Pass_Fail = readr::col_factor(),
                                      Responses = readr::col_character()),
@@ -136,7 +136,8 @@ prep_NRFSP_dat <- function(path_dat){
     dplyr::mutate(response = base::strsplit(.data$response, split = ""),
                   response = purrr::map(.data$response, resp_list_to_col),
                   form_id = paste0(.data$Form_ID, "_", .data$Version_ID),
-                  key_id = paste0(.data$Form_ID, .data$Version_ID, "_keys.csv"))
+                  key_id = paste0(.data$Form_ID, .data$Version_ID, "_keys.csv"),
+                  across(c(form_id, key_id), factor))
 
   base::cat(base::paste0("Found and compiled the following: \n",
                          base::paste(names(csv_paths), collapse = "\n")))
