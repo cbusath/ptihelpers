@@ -76,7 +76,7 @@ prep_NRFSP <- function(path_dat, path_key, item_pilot = c(80, 81, 82, 83, 84, 85
   return(dat)
 }
 
-
+#' @export
 read_NRFSP_csv <- function(csv_paths){
   readr::read_csv(csv_paths,
                   col_types = list(Candidate_ID = readr::col_double(),
@@ -93,7 +93,7 @@ read_NRFSP_csv <- function(csv_paths){
                                  response = .data$Responses))
 }
 
-
+#' @export
 prep_NRFSP_dat <- function(path_dat){
 
   #HELPERS
@@ -145,7 +145,7 @@ prep_NRFSP_dat <- function(path_dat){
 
 }
 
-
+#' @export
 prep_NRFSP_key_table <- function(keys_list){
 
   key_table <-
