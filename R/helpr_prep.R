@@ -1,7 +1,7 @@
 
 
 
-
+#' @export
 check_keys_available <- function(dat, keys_path){
 
   keys_path_named <- prep_paths(keys_path)
@@ -29,6 +29,8 @@ check_keys_available <- function(dat, keys_path){
   return(keys_list)
 
 }
+
+#' @export
 match_keys_available <- function(dat, keys_list){
 
   #REPORT
@@ -45,6 +47,7 @@ match_keys_available <- function(dat, keys_list){
     return(dat)
   }
 }
+#' @export
 prep_paths <- function(path, ending = "csv"){
 
   path <- stringr::str_replace_all(path, "[\\\\]", "/")
