@@ -80,7 +80,7 @@ prep_NRFSP <- function(path_dat, path_key, item_pilot = c(80, 81, 82, 83, 84, 85
 read_NRFSP_csv <- function(csv_paths){
   readr::read_csv(csv_paths,
                   col_types = list(Candidate_ID = readr::col_double(),
-                                   Form_ID = readr::col_character(),
+                                   Form_ID = readr::col_factor(),
                                    Version_ID = readr::col_character(),
                                    Raw_Score = readr::col_double(),
                                    Pass_Fail = readr::col_factor(),
@@ -110,7 +110,7 @@ prep_NRFSP_dat <- function(path_dat){
   csv_paths <- prep_paths(path_dat, "csv")
 
 
-  #names_files <- base::names(csv_paths) #DELETE
+  version_id_missing0 <- as.character(c(1:9))
 
   dat <-
     purrr::map_dfr(.x = csv_paths,
@@ -118,6 +118,9 @@ prep_NRFSP_dat <- function(path_dat){
                    .id = "file") %>%
     dplyr::mutate(response = base::strsplit(.data$response, split = ""),
                   response = purrr::map(.data$response, resp_list_to_col),
+                  Version_ID = ifelse(.data$Version_ID %in% version_id_missing0,
+                                      paste0("0", .data$Version_ID),
+                                      .data$Version_ID),
                   form_id = paste0(.data$Form_ID, "_", .data$Version_ID),
                   key_id = paste0(.data$Form_ID, .data$Version_ID, "_keys.csv"),
                   across(c(form_id, key_id), factor))
