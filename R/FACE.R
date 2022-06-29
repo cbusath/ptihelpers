@@ -72,10 +72,18 @@ prep_FACE <- function(path_dat, path_key, list_form_id,
     tidyr::unnest(.data$item_dat) %>%
 
     #CLEAN UP COLS
-    dplyr::select(.data$file, .data$form_id, .data$key_id,
-                  .data$cand_id, .data$pass, .data$score,
-                  .data$item_seq, .data$item_pilot, .data$item_id,
-                  response = "responses", .data$item_key, .data$correct)
+    dplyr::select(.data$file,
+                  .data$form_id,
+                  .data$key_id,
+                  .data$cand_id,
+                  .data$pass,
+                  .data$score,
+                  .data$item_seq,
+                  .data$item_pilot,
+                  .data$item_id,
+                  response = "responses",
+                  .data$item_key,
+                  .data$correct)
 
   return(dat)
 }
