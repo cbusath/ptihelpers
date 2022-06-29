@@ -22,7 +22,7 @@ prep_NRFSP <- function(path_dat, path_key, item_pilot = c(80, 81, 82, 83, 84, 85
 
   #CANDIDATE DATA
   dat <-
-    prep_NRFSP_dat(path_dat)
+    prep_NRFSP_dat(path_dat, item_pilot)
 
 
   #MATCH KEYS
@@ -36,13 +36,15 @@ prep_NRFSP <- function(path_dat, path_key, item_pilot = c(80, 81, 82, 83, 84, 85
   #JOIN
   dat <-
     dat %>%
-    tidyr::unnest(.data$response) %>%
+    tidyr::unnest(c(.data$response, .data$item_seq)) %>%
     dplyr::left_join(key_table,
                      by = c("key_id", "item_seq"))
 
 
   #FACTORIZE, GET CORRECT
+
   response_options <- dat$item_key %>% unique()
+
   dat <-
     dat %>%
     dplyr::mutate(dplyr::across(c(.data$file,
@@ -53,10 +55,10 @@ prep_NRFSP <- function(path_dat, path_key, item_pilot = c(80, 81, 82, 83, 84, 85
                   dplyr::across(c(.data$response,
                                   .data$item_key),
                                 ~factor(.x, levels = response_options)),
-                  pass = ifelse(.data$pass == "Pass", T, F),
-                  correct = ifelse(.data$item_key == .data$response, 1, 0),
-                  item_pilot = ifelse(as.numeric(.data$item_seq) %in% item_pilot,
-                                      T, F)) %>%
+
+                  correct = ifelse(.data$item_key == .data$response, 1, 0)
+                  ) %>%
+
     dplyr::select(
            .data$file,
            .data$form_id,
@@ -64,6 +66,7 @@ prep_NRFSP <- function(path_dat, path_key, item_pilot = c(80, 81, 82, 83, 84, 85
            .data$cand_id,
            .data$pass,
            .data$score,
+           .data$item_n,
            .data$item_seq,
            .data$item_pilot,
            .data$item_id,
@@ -94,21 +97,11 @@ read_NRFSP_csv <- function(csv_paths){
 }
 
 #' @export
-prep_NRFSP_dat <- function(path_dat){
+prep_NRFSP_dat <- function(path_dat, item_pilot){
 
-  #Function to change response list to column for join (may become generalized)
-  resp_list_to_col <- function(.list){
-    return(
-      tibble::as_tibble_col(.list,
-                            column_name = "response") %>%
-        dplyr::mutate(item_seq = 1:nrow(.))
-    )
-
-  }
 
   #START
   csv_paths <- prep_paths(path_dat, "csv")
-
 
   version_id_missing0 <- as.character(c(1:9))
 
@@ -117,13 +110,20 @@ prep_NRFSP_dat <- function(path_dat){
                    .f = read_NRFSP_csv,
                    .id = "file") %>%
     dplyr::mutate(response = base::strsplit(.data$response, split = ""),
-                  response = purrr::map(.data$response, resp_list_to_col),
+                  response = purrr::map(.data$response, toupper),
                   Version_ID = ifelse(.data$Version_ID %in% version_id_missing0,
-                                      paste0("0", .data$Version_ID),
+                                      base::paste0("0", .data$Version_ID),
                                       .data$Version_ID),
+                  item_n = purrr::map_dbl(.data$response, length),
+                  item_seq = purrr::map(.data$item_n, ~ 1:.x),
                   form_id = paste0(.data$Form_ID, "_", .data$Version_ID),
                   key_id = paste0(.data$Form_ID, .data$Version_ID, "_keys.csv"),
-                  across(c(form_id, key_id), factor))
+                  pass = ifelse(.data$pass == "Pass", T, F),
+                  item_pilot = ifelse(.data$item_seq %in% item_pilot,
+                                      T, F),
+                  dplyr::across(c(.data$form_id, .data$key_id), factor))
+
+
 
   base::cat(base::paste0("Found and compiled the following: \n",
                          base::paste(names(csv_paths), collapse = "\n")))
