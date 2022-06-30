@@ -54,6 +54,7 @@ prep_FACE <- function(path_dat, path_key, list_form_id,
                                 ~factor(.x, levels = possible_response_options)),
                   correct = dplyr::case_when(.data$responses == .data$item_key ~ 1,
                                              .data$item_key == "ABCD" ~ 1,
+                                             is.na(.data$responses) ~ -999,
                                              .data$responses != .data$item_key ~ 0
                   ),
                   item_pilot = ifelse(as.numeric(.data$item_seq) %in% item_pilot,
