@@ -57,8 +57,8 @@ prep_NRFSP <- function(path_dat, path_key,
                                   .data$item_key),
                                 ~factor(.x, levels = response_options)),
 
-                  correct = ifelse(.data$item_key == .data$response, 1, 0),
-                  correct = ifelse(is.na(.data$correct), -999, .data$correct)
+                  correct = ifelse(.data$item_key == .data$response, 1, 0)
+                  #correct = ifelse(is.na(.data$correct), -999, .data$correct)
                   )
 
   #TIDY
