@@ -4,10 +4,10 @@
 #' @importFrom rlang .data
 #'
 #'
-#' @param path_dat String pointing to folder containing csv files, or path to single csv file.
-#' @param path_key String pointing to folder containing csv files, or path to single csv file.
+#' @param path_dat String pointing to folder containing csv files, or path to single csv file_id.
+#' @param path_key String pointing to folder containing csv files, or path to single csv file_id.
 #' @param item_pilot List of numbers that correspond pilot item sequence (e.g., 70, 71, 72, 73, 74, 75).
-#' @return A comprehensive tibble where every row is a candidate response, but which can be nested to conduct a variety of analysis.
+#' @return A comprehensive tibble where every row is a candidate resp_cand, but which can be nested to conduct a variety of analysis.
 #'
 #'
 #'
@@ -38,7 +38,7 @@ prep_NRFSP <- function(path_dat, path_key,
   #JOIN
   dat <-
     dat %>%
-    tidyr::unnest(c(.data$response, .data$item_seq)) %>%
+    tidyr::unnest(c(.data$resp_cand, .data$item_seq)) %>%
     dplyr::left_join(key_table,
                      by = c("key_id", "item_seq"))
 
@@ -48,17 +48,17 @@ prep_NRFSP <- function(path_dat, path_key,
 
   dat <-
     dat %>%
-    dplyr::mutate(dplyr::across(c(.data$file,
+    dplyr::mutate(dplyr::across(c(.data$file_id,
                                   .data$cand_id,
                                   .data$form_id,
                                   .data$key_id
                                   ), factor),
-                  dplyr::across(c(.data$response,
+                  dplyr::across(c(.data$resp_cand,
                                   .data$item_key),
                                 ~factor(.x, levels = response_options)),
 
-                  correct = ifelse(.data$item_key == .data$response, 1, 0)
-                  #correct = ifelse(is.na(.data$correct), -999, .data$correct)
+                  resp_correct = ifelse(.data$item_key == .data$resp_cand, 1, 0)
+                  #resp_correct = ifelse(is.na(.data$resp_correct), -999, .data$resp_correct)
                   )
 
   #TIDY
@@ -67,20 +67,20 @@ prep_NRFSP <- function(path_dat, path_key,
     dat <-
       dat %>%
       dplyr::select(
-        .data$file,
+        .data$file_id,
         .data$form_id,
         .data$key_id,
         .data$cand_id,
-        .data$pass,
-        .data$score,
+        .data$cand_pass,
+        .data$cand_score,
         .data$item_n,
         .data$item_seq,
         .data$item_pilot,
         .data$item_id,
         .data$item_domain,
-        .data$response,
+        .data$resp_cand,
         .data$item_key,
-        .data$correct)
+        .data$resp_correct)
   }else{
     dat <-
       dat %>%
@@ -90,7 +90,7 @@ prep_NRFSP <- function(path_dat, path_key,
         .data$exam_month,
 
         #DATA SOURCES
-        .data$file,
+        .data$file_id,
         .data$form_id,
         .data$key_id,
 
@@ -103,8 +103,8 @@ prep_NRFSP <- function(path_dat, path_key,
         .data$cand_country,
         .data$cand_state,
         .data$cand_company,
-        .data$pass,
-        .data$score,
+        .data$cand_pass,
+        .data$cand_score,
         .data$item_n,
 
         #CANDIDATE AND ITEM SPECIFIC
@@ -112,9 +112,9 @@ prep_NRFSP <- function(path_dat, path_key,
         .data$item_pilot,
         .data$item_id,
         .data$item_domain,
-        .data$response,
+        .data$resp_cand,
         .data$item_key,
-        .data$correct
+        .data$resp_correct
         )
 
   }
@@ -136,9 +136,9 @@ read_NRFSP_csv <- function(csv_paths){
                   col_select = c(cand_id = .data$Candidate_ID,
                                  .data$Form_ID,
                                  .data$Version_ID,
-                                 score = .data$Raw_Score,
-                                 pass = .data$Pass_Fail,
-                                 response = .data$Responses))
+                                 cand_score = .data$Raw_Score,
+                                 cand_pass = .data$Pass_Fail,
+                                 resp_cand = .data$Responses))
 }
 
 
@@ -164,9 +164,9 @@ read_NRFSP_groups_csv <- function(csv_paths){
                   col_select = c(cand_id = .data$Candidate_ID,
                                  .data$Form_ID,
                                  .data$Version_ID,
-                                 score = .data$Raw_Score,
-                                 pass = .data$Pass_Fail,
-                                 response = .data$Responses,
+                                 cand_score = .data$Raw_Score,
+                                 cand_pass = .data$Pass_Fail,
+                                 resp_cand = .data$Responses,
                                  cand_race = .data$Race,
                                  cand_gender = .data$Gender,
                                  cand_birthyear = .data$Birth_Year,
@@ -192,30 +192,30 @@ prep_NRFSP_dat <- function(path_dat, item_pilot, include_groups = F){
     dat <-
       purrr::map_dfr(.x = csv_paths,
                      .f = read_NRFSP_csv,
-                     .id = "file")
+                     .id = "file_id")
 
   }else{
 
     dat <-
       purrr::map_dfr(.x = csv_paths,
                      .f = read_NRFSP_groups_csv,
-                     .id = "file")
+                     .id = "file_id")
 
   }
 
   #TIDY
   dat <-
     dat %>%
-    dplyr::mutate(response = base::strsplit(.data$response, split = ""),
-                  response = purrr::map(.data$response, toupper),
+    dplyr::mutate(resp_cand = base::strsplit(.data$resp_cand, split = ""),
+                  resp_cand = purrr::map(.data$resp_cand, toupper),
                   Version_ID = ifelse(.data$Version_ID %in% version_id_missing0,
                                       base::paste0("0", .data$Version_ID),
                                       .data$Version_ID),
-                  item_n = purrr::map_dbl(.data$response, length),
+                  item_n = purrr::map_dbl(.data$resp_cand, length),
                   item_seq = purrr::map(.data$item_n, ~ 1:.x),
                   form_id = paste0(.data$Form_ID, "_", .data$Version_ID),
                   key_id = paste0(.data$Form_ID, .data$Version_ID, "_keys.csv"),
-                  pass = ifelse(.data$pass == "Pass", T, F),
+                  cand_pass = ifelse(.data$cand_pass == "Pass", T, F),
                   item_pilot = ifelse(.data$item_seq %in% item_pilot,
                                       T, F),
                   dplyr::across(c(.data$form_id, .data$key_id), factor))
